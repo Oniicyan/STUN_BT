@@ -12,6 +12,7 @@ Linux（特别是 OpenWrt，包括 WSL2）下通过 [NATMap](https://github.com/
 
 主路由 UPnP 开启安全模式时，需要安装 proxychains (proxychains-ng/proxychains4)，并在下载设备上启用代理服务器，推荐 [3proxy](https://3proxy.ru/) 或 [GOST](https://gost.run/)
 
+
 nftable 版本低于 1.0.1 时，需要把 `@ih` 改为 `@th`
 
 对于 TCP，将偏移量 `+160`
