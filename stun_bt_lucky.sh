@@ -20,7 +20,7 @@ OLDPORT=$(grep $L4PROTO $STUNIFO 2>/dev/null | awk -F ':| ' '{print$3}')
 # Lucky 下不支持，将不清理弃用协议的 UPnP 规则
 
 # 更新保存穿透信息
-sed -i '/'$L4PROTO'/d' $STUNIFO
+sed -i '/'$L4PROTO'/d' $STUNIFO 2>/dev/null
 echo $L4PROTO $WANADDR:$WANPORT '->' $OWNADDR:$LANPORT '->' $APPADDR:$APPPORT $(date +%s) >>$STUNIFO
 echo $(date) $L4PROTO $WANADDR:$WANPORT '->' $OWNADDR:$LANPORT '->' $APPADDR:$APPPORT >>/tmp/$OWNNAME.log
 
