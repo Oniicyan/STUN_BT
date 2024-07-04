@@ -17,7 +17,7 @@ OLDPORT=$(grep $L4PROTO $STUNIFO 2>/dev/null | awk -F ':| ' '{print$3}')
 
 # 判断 TCP 或 UDP 的穿透是否启用
 # 清理穿透信息中没有运行的协议
-# Lucky 下不支持，将不清理 UPnP 规则
+# Lucky 下不支持，将不清理弃用协议的 UPnP 规则
 
 # 更新保存穿透信息
 sed -i '/'$L4PROTO'/d' $STUNIFO
