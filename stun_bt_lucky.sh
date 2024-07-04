@@ -72,9 +72,9 @@ fi
 nft add set ip STUN BTTR_UDP "{ type ipv4_addr . inet_service; flags dynamic; timeout 1h; }"
 nft add chain ip STUN BTTR_UDP
 nft insert rule ip STUN BTTR ip daddr . udp dport @BTTR_UDP goto BTTR_UDP
-nft add rule ip STUN BTTR meta l4proto udp @th,160,64 0x41727101980 @th,224,32 0 add @BTTR_UDP { ip daddr . udp dport } goto BTTR_UDP
+nft add rule ip STUN BTTR meta l4proto udp @th,64,64 0x41727101980 @th,128,32 0 add @BTTR_UDP { ip daddr . udp dport } goto BTTR_UDP
 nft delete rule ip STUN BTTR_UDP handle $(nft -a list chain ip STUN BTTR_UDP 2>/dev/null | grep \"$OWNNAME\" | awk '{print$NF}') 2>/dev/null
-nft add rule ip STUN BTTR_UDP $OIFNAME ip saddr $APPADDR @th,224,32 1 @th,928,16 $APPPORT @th,928,16 set $SETNUM update @BTTR_UDP { ip daddr . udp dport } counter accept comment $OWNNAME
+nft add rule ip STUN BTTR_UDP $OIFNAME ip saddr $APPADDR @th,128,32 1 @th,832,16 $APPPORT @th,832,16 set $SETNUM update @BTTR_UDP { ip daddr . udp dport } counter accept comment $OWNNAME
 
 # 判断脚本运行的环境，选择 DNAT 方式
 # 先排除需要 UPnP 的情况
