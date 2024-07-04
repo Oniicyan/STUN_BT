@@ -14,4 +14,5 @@ Linux（特别是 OpenWrt，包括 WSL2）下通过 [NATMap](https://github.com/
 
 nftable 版本低于 1.0.1 时，需要把 `@ih` 改为 `@th`，并将偏移量 `+160`
 
-[详细说明](https://www.cometbbs.com/t/92627)
+[详细说明](https://www.bilibili.com/read/cv34755793/)
+[Lucky 脚本使用教程](https://www.bilibili.com/read/cv35917659/)
