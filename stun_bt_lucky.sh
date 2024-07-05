@@ -58,7 +58,7 @@ for HANDLE in $(nft -a list chain ip STUN BTTR_HTTP | grep \"$OWNNAME\" | awk '{
 	nft delete rule ip STUN BTTR_HTTP handle $HANDLE
 done
 for OFFSET in $(seq 928 16 1216); do
-	nft insert rule ip STUN BTTR_HTTP $OIFNAME ip saddr $APPADDR @th,$OFFSET,80 $STRAPP @th,$(($OFFSET+32)),48 set $SETSTR update @BTTR_HTTP { ip daddr . tcp dport } counter accept comment $OWNNAME
+	nft insert rule ip STUN BTTR_HTTP $OIFNAME ip saddr $APPADDR @th,$OFFSET,80 $STRAPP @th,$(($OFFSET+32)),48 set $SETSTR update @BTTR_HTTP { ip daddr . tcp dport } counter accept comment "$OWNNAME"
 done
 
 # UDP Tracker
@@ -74,7 +74,7 @@ nft add chain ip STUN BTTR_UDP
 nft insert rule ip STUN BTTR ip daddr . udp dport @BTTR_UDP goto BTTR_UDP
 nft add rule ip STUN BTTR meta l4proto udp @th,64,64 0x41727101980 @th,128,32 0 add @BTTR_UDP { ip daddr . udp dport } goto BTTR_UDP
 nft delete rule ip STUN BTTR_UDP handle $(nft -a list chain ip STUN BTTR_UDP 2>/dev/null | grep \"$OWNNAME\" | awk '{print$NF}') 2>/dev/null
-nft insert rule ip STUN BTTR_UDP $OIFNAME ip saddr $APPADDR @th,128,32 1 @th,832,16 $APPPORT @th,832,16 set $SETNUM update @BTTR_UDP { ip daddr . udp dport } counter accept comment $OWNNAME
+nft insert rule ip STUN BTTR_UDP $OIFNAME ip saddr $APPADDR @th,128,32 1 @th,832,16 $APPPORT @th,832,16 set $SETNUM update @BTTR_UDP { ip daddr . udp dport } counter accept comment "$OWNNAME"
 
 # 判断脚本运行的环境，选择 DNAT 方式
 # 先排除需要 UPnP 的情况
@@ -155,9 +155,9 @@ SETDNAT() {
 # BT 应用运行在路由器下，使用 dnat
 [ $DNAT = 1 ] || [ $DNAT = 4 ] && \
 SETDNAT && \
-nft insert rule ip STUN DNAT $IIFNAME $L4PROTO dport $LANPORT counter dnat ip to $APPADDR:$APPPORT comment $OWNNAME
+nft insert rule ip STUN DNAT $IIFNAME $L4PROTO dport $LANPORT counter dnat ip to $APPADDR:$APPPORT comment "$OWNNAME"
 
 # BT 应用运行在路由器上，使用 redirect
 [ $DNAT = 2 ] && \
 SETDNAT && \
-nft insert rule ip STUN DNAT $IIFNAME $L4PROTO dport $LANPORT counter redirect to :$APPPORT comment $OWNNAME
+nft insert rule ip STUN DNAT $IIFNAME $L4PROTO dport $LANPORT counter redirect to :$APPPORT comment "$OWNNAME"
