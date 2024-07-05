@@ -10,7 +10,7 @@ LANPORT=$3
 L4PROTO=$4
 OWNADDR=
 
-OWNNAME=$(echo stun_bt_$APPADDR:$APPPORT$([ -n $IFNAME ] && echo @$IFNAME))
+OWNNAME=$(echo stun_bt_$APPADDR:$APPPORT$([ -n "$IFNAME" ] && echo @$IFNAME))
 STUNIFO=/tmp/$(echo $OWNNAME | sed 's/[[:punct:]]/_/g').info
 OLDPORT=$(grep $L4PROTO $STUNIFO 2>/dev/null | awk -F ':| ' '{print$3}')
 RELEASE=$(grep ^ID= /etc/os-release | awk -F '=' '{print$2}' | tr -d \")
