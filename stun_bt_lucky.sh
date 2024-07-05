@@ -10,8 +10,8 @@ LANPORT=$3
 L4PROTO=$4
 OWNADDR=
 
-OWNNAME=$(echo stun_bt_${APPADDR}_$APPPORT$([ -n "$IFNAME" ] && echo @$IFNAME))
-STUNIFO=/tmp/$(echo $OWNNAME | sed 's/[[:punct:]]/_/g').info
+OWNNAME=$(echo stun_bt_$APPADDR:$APPPORT$([ -n "$IFNAME" ] && echo @$IFNAME) | sed 's/[[:punct:]]/_/g')
+STUNIFO=/tmp/$OWNNAME.info
 OLDPORT=$(grep $L4PROTO $STUNIFO 2>/dev/null | awk -F ':| ' '{print$3}')
 RELEASE=$(grep ^ID= /etc/os-release | awk -F '=' '{print$2}' | tr -d \")
 
@@ -22,7 +22,7 @@ RELEASE=$(grep ^ID= /etc/os-release | awk -F '=' '{print$2}' | tr -d \")
 # 更新保存穿透信息
 sed -i '/'$L4PROTO'/d' $STUNIFO 2>/dev/null
 echo $L4PROTO $WANADDR:$WANPORT '->' $OWNADDR:$LANPORT '->' $APPADDR:$APPPORT $(date +%s) >>$STUNIFO
-echo $(date) $L4PROTO $WANADDR:$WANPORT '->' $OWNADDR:$LANPORT '->' $APPADDR:$APPPORT >>/tmp/$(echo $OWNNAME | sed 's/[[:punct:]]/_/g').log
+echo $(date) $L4PROTO $WANADDR:$WANPORT '->' $OWNADDR:$LANPORT '->' $APPADDR:$APPPORT >>/tmp/$OWNNAME.log
 
 # 防止脚本同时操作 nftables 导致冲突
 [ $L4PROTO = udp ] && sleep 1 && \
