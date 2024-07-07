@@ -153,11 +153,13 @@ SETDNAT() {
 }
 
 # BT 应用运行在路由器下，使用 dnat
-[ $DNAT = 1 ] || [ $DNAT = 4 ] && \
-SETDNAT && \
-nft insert rule ip STUN DNAT $IIFNAME $L4PROTO dport $LANPORT counter dnat ip to $APPADDR:$APPPORT comment "$OWNNAME"
+[ $DNAT = 1 ] || [ $DNAT = 4 ] && ( \
+	SETDNAT
+	nft insert rule ip STUN DNAT $IIFNAME $L4PROTO dport $LANPORT counter dnat ip to $APPADDR:$APPPORT comment "$OWNNAME"
+)
 
 # BT 应用运行在路由器上，使用 redirect
-[ $DNAT = 2 ] && \
-SETDNAT && \
-nft insert rule ip STUN DNAT $IIFNAME $L4PROTO dport $LANPORT counter redirect to :$APPPORT comment "$OWNNAME"
+[ $DNAT = 2 ] && ( \
+	SETDNAT
+	nft insert rule ip STUN DNAT $IIFNAME $L4PROTO dport $LANPORT counter redirect to :$APPPORT comment "$OWNNAME"
+)
