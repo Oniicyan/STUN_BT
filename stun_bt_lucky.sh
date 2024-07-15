@@ -17,7 +17,7 @@ RELEASE=$(grep ^ID= /etc/os-release | awk -F '=' '{print$2}' | tr -d \")
 
 # 判断 TCP 或 UDP 的穿透是否启用
 # 清理穿透信息中没有运行的协议
-# Lucky 下不支持，将不清理弃用协议的 UPnP 规则
+# Lucky 下不支持，如要清理弃用协议，需要重启
 
 # 更新保存穿透信息
 sed -i '/'$L4PROTO'/d' $STUNIFO 2>/dev/null
@@ -75,6 +75,27 @@ nft insert rule ip STUN BTTR ip daddr . udp dport @BTTR_UDP goto BTTR_UDP
 nft add rule ip STUN BTTR meta l4proto udp @th,64,64 0x41727101980 @th,128,32 0 add @BTTR_UDP { ip daddr . udp dport } goto BTTR_UDP
 nft delete rule ip STUN BTTR_UDP handle $(nft -a list chain ip STUN BTTR_UDP 2>/dev/null | grep \"$OWNNAME\" | awk '{print$NF}') 2>/dev/null
 nft insert rule ip STUN BTTR_UDP $OIFNAME ip saddr $APPADDR @th,128,32 1 @th,832,16 $APPPORT @th,832,16 set $SETNUM update @BTTR_UDP { ip daddr . udp dport } counter accept comment "$OWNNAME"
+
+# Tracker 流量需绕过软件加速
+if nft list chain inet fw4 forward | grep 'flow add @ft' >/dev/null; then
+	CTMARK=$RANDOM
+	nft add chain ip STUN BTTR_NOFT { type filter hook forward priority filter - 5 \; }
+	nft delete rule ip STUN BTTR_NOFT handle $(nft -a list chain ip STUN BTTR_NOFT 2>/dev/null | grep \"$OWNNAME\" | grep '@BTTR_HTTP' | awk '{print$NF}') 2>/dev/null
+	nft delete rule ip STUN BTTR_NOFT handle $(nft -a list chain ip STUN BTTR_NOFT 2>/dev/null | grep \"$OWNNAME\" | grep '@BTTR_UDP' | awk '{print$NF}') 2>/dev/null
+	nft add rule ip STUN BTTR_NOFT $OIFNAME ip saddr $APPADDR ip daddr . tcp dport @BTTR_HTTP counter ct mark set $CTMARK comment "$OWNNAME"
+	nft add rule ip STUN BTTR_NOFT $OIFNAME ip saddr $APPADDR ip daddr . udp dport @BTTR_UDP counter ct mark set $CTMARK comment "$OWNNAME"
+	mkdir -p /usr/share/nftables.d/table-pre
+cat >/usr/share/nftables.d/table-pre/$OWNNAME.nft <<EOF
+	chain forward {
+		ct mark $CTMARK counter accept comment "$OWNNAME"
+		$OIFNAME ip saddr $APPADDR tcp flags { syn, ack } accept comment "$OWNNAME"
+	}
+EOF
+	fw4 -q reload
+else
+	nft delete chain ip STUN BTTR_NOFT 2>/dev/null
+	rm /usr/share/nftables.d/table-pre/$OWNNAME.nft 2>/dev/null && fw4 -q reload
+fi
 
 # 判断脚本运行的环境，选择 DNAT 方式
 # 先排除需要 UPnP 的情况
