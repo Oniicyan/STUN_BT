@@ -77,23 +77,25 @@ nft delete rule ip STUN BTTR_UDP handle $(nft -a list chain ip STUN BTTR_UDP 2>/
 nft insert rule ip STUN BTTR_UDP $OIFNAME ip saddr $APPADDR @th,128,32 1 @th,832,16 $APPPORT @th,832,16 set $SETNUM update @BTTR_UDP { ip daddr . udp dport } counter accept comment "$OWNNAME"
 
 # Tracker 流量需绕过软件加速
-if nft list chain inet fw4 forward | grep 'flow add @ft' >/dev/null; then
+if uci show firewall 2>&1 | grep "flow_offloading='1'" >/dev/null; then
 	CTMARK=$RANDOM
 	nft add chain ip STUN BTTR_NOFT { type filter hook forward priority filter - 5 \; }
 	nft delete rule ip STUN BTTR_NOFT handle $(nft -a list chain ip STUN BTTR_NOFT 2>/dev/null | grep \"$OWNNAME\" | grep '@BTTR_HTTP' | awk '{print$NF}') 2>/dev/null
 	nft delete rule ip STUN BTTR_NOFT handle $(nft -a list chain ip STUN BTTR_NOFT 2>/dev/null | grep \"$OWNNAME\" | grep '@BTTR_UDP' | awk '{print$NF}') 2>/dev/null
 	nft add rule ip STUN BTTR_NOFT $OIFNAME ip saddr $APPADDR ip daddr . tcp dport @BTTR_HTTP counter ct mark set $CTMARK comment "$OWNNAME"
 	nft add rule ip STUN BTTR_NOFT $OIFNAME ip saddr $APPADDR ip daddr . udp dport @BTTR_UDP counter ct mark set $CTMARK comment "$OWNNAME"
-	mkdir -p /usr/share/nftables.d/table-pre
-cat >/usr/share/nftables.d/table-pre/$OWNNAME.nft <<EOF
-	chain forward {
-		ct mark $CTMARK counter accept comment "$OWNNAME"
-		$OIFNAME ip saddr $APPADDR tcp flags { syn, ack } accept comment "$OWNNAME"
-	}
+cat >/tmp/${OWNNAME}_noft.sh <<EOF
+uci show firewall 2>&1 | grep "flow_offloading='1'" >/dev/null || exit
+nft insert rule inet fw4 forward $OIFNAME ip saddr $APPADDR tcp flags { syn, ack } accept comment "$OWNNAME"
+nft insert rule inet fw4 forward ct mark $CTMARK counter accept comment "$OWNNAME"
 EOF
+	uci set firewall.${OWNNAME}_noft=include
+	uci set firewall.${OWNNAME}_noft.path=/tmp/${OWNNAME}_noft.sh
+	uci commit firewall
 	fw4 -q reload
 else
 	nft delete chain ip STUN BTTR_NOFT 2>/dev/null
+	uci -q delete firewall.${OWNNAME}_noft && uci commit firewall && fw4 -q reload
 	rm /usr/share/nftables.d/table-pre/$OWNNAME.nft 2>/dev/null && fw4 -q reload
 fi
 
