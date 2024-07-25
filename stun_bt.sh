@@ -1,8 +1,8 @@
 # 以下变量需按要求填写
-IFNAME=					# 指定接口，可留空；仅在多 WAN 时需要；拨号接口的格式为 "pppoe-wancm"
+IFNAME=pppoe-wancm		# 指定接口，可留空；仅在多 WAN 时需要；拨号接口的格式为 "pppoe-wancm"
 GWLADDR=192.168.8.1		# 主路由 LAN 的 IPv4 地址
-APPADDR=192.168.8.168	# 下载设备的 IPv4 地址，允许主路由或旁路由本身运行 BT 应用
-APPPORT=12345			# BT 应用程序的监听端口，HTTP 改包要求 5 位数端口
+APPADDR=192.168.8.188	# 下载设备的 IPv4 地址，允许主路由或旁路由本身运行 BT 应用
+APPPORT=61128			# BT 应用程序的监听端口，HTTP 改包要求 5 位数端口
 
 WANADDR=$1
 WANPORT=$2
