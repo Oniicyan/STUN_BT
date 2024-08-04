@@ -95,11 +95,8 @@ EOF
 	fw4 -q reload
 else
 	nft delete chain ip STUN BTTR_NOFT 2>/dev/null
-	rm /tmp/*_noft.sh 2>/dev/null
-	for SECTION in $(uci show firewall | grep _noft= | awk -F = '{print$1}'); do
-		uci -q delete $SECTION
-		uci commit firewall
-	done
+	uci -q delete firewall.${OWNNAME}_noft && uci commit firewall && fw4 -q reload
+	rm /usr/share/nftables.d/table-pre/$OWNNAME.nft 2>/dev/null && fw4 -q reload
 fi
 
 # 判断脚本运行的环境，选择 DNAT 方式
@@ -189,3 +186,5 @@ SETDNAT() {
 	SETDNAT
 	nft insert rule ip STUN DNAT $IIFNAME $L4PROTO dport $LANPORT counter redirect to :$APPPORT comment "$OWNNAME"
 )
+
+echo -n nftables OK.
