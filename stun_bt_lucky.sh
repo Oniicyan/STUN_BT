@@ -12,7 +12,7 @@ OWNADDR=
 
 OWNNAME=$(echo stun_bt_$APPADDR:$APPPORT$([ -n "$IFNAME" ] && echo @$IFNAME) | sed 's/[[:punct:]]/_/g')
 STUNIFO=/tmp/$OWNNAME.info
-OLDPORT=$(grep $L4PROTO $STUNIFO 2>/dev/null | awk -F ':| ' '{print$3}')
+OLDPORT=$LANPORT	# Lucky 使用固定本地端口
 RELEASE=$(grep ^ID= /etc/os-release | awk -F '=' '{print$2}' | tr -d \")
 
 # 判断 TCP 或 UDP 的穿透是否启用
@@ -118,7 +118,6 @@ done
 # 若未排除，则尝试直连 UPnP
 if [ $DNAT = 0 ]; then
 	[ -n "$OLDPORT" ] && upnpc -i -d $OLDPORT $L4PROTO
-	[ -n "$DISPORT" ] && upnpc -i -d $DISPORT
 	upnpc -i -e "STUN BT $L4PROTO $WANPORT->$LANPORT->$APPPORT" -a $APPADDR $APPPORT $LANPORT $L4PROTO | \
 	grep $APPADDR | grep $APPPORT | grep $LANPORT | grep -v failed
 	[ $? = 0 ] && DNAT=3
@@ -130,7 +129,6 @@ if [ $DNAT = 0 ]; then
 	echo [ProxyList] >$PROXYCONF
 	echo http $APPADDR 3128 >>$PROXYCONF
 	[ -n "$OLDPORT" ] && proxychains -f $PROXYCONF upnpc -i -d $OLDPORT $L4PROTO
-	[ -n "$DISPORT" ] && proxychains -f $PROXYCONF upnpc -i -d $DISPORT
 	proxychains -f $PROXYCONF \
 	upnpc -i -e "STUN BT $L4PROTO $WANPORT->$LANPORT->$APPPORT" -a $APPADDR $APPPORT $LANPORT $L4PROTO | \
 	grep $APPADDR | grep $APPPORT | grep $LANPORT | grep -v failed
