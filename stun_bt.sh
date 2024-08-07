@@ -13,7 +13,7 @@ OWNADDR=$6
 OWNNAME=$(echo $0 | awk -F / '{print$NF}' | awk -F . '{print$1}' | sed 's/[[:punct:]]/_/g')
 RELEASE=$(grep ^ID= /etc/os-release | awk -F '=' '{print$2}' | tr -d \")
 STUNIFO=/tmp/$OWNNAME.info
-OLDPORT=$(grep $L4PROTO $STUNIFO 2>/dev/null | awk -F ':| ' '{print$3}')
+OLDPORT=$(grep $L4PROTO $STUNIFO 2>/dev/null | awk -F ':| ' '{print$6}')
 
 # 判断 TCP 或 UDP 的穿透是否启用
 # 清理穿透信息中没有运行的协议
@@ -29,15 +29,15 @@ case $RELEASE in
 			fi
 		done
 		[ $(uci -q get natmap.$SECTTCP) ] || ( \
-		DISPORT="$(grep tcp $STUNIFO | awk -F ':| ' '{print$3}') tcp"; sed -i '/'tcp'/d' $STUNIFO )
+		DISPORT="$(grep tcp $STUNIFO | awk -F ':| ' '{print$6}') tcp"; sed -i '/'tcp'/d' $STUNIFO )
 		[ $(uci -q get natmap.$SECTUDP) ] || ( \
-		DISPORT="$(grep udp $STUNIFO | awk -F ':| ' '{print$3}') udp"; sed -i '/'udp'/d' $STUNIFO )
+		DISPORT="$(grep udp $STUNIFO | awk -F ':| ' '{print$6}') udp"; sed -i '/'udp'/d' $STUNIFO )
 		;;
 	*)
 		ps aux | grep $0 | grep "\-h" || ( \
-		DISPORT="$(grep tcp $STUNIFO | awk -F ':| ' '{print$3}') tcp"; sed -i '/'tcp'/d' $STUNIFO )
+		DISPORT="$(grep tcp $STUNIFO | awk -F ':| ' '{print$6}') tcp"; sed -i '/'tcp'/d' $STUNIFO )
 		ps aux | grep $0 | grep "\-u" || ( \
-		DISPORT="$(grep udp $STUNIFO | awk -F ':| ' '{print$3}') udp"; sed -i '/'udp'/d' $STUNIFO )
+		DISPORT="$(grep udp $STUNIFO | awk -F ':| ' '{print$6}') udp"; sed -i '/'udp'/d' $STUNIFO )
 		;;
 esac
 
