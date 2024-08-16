@@ -196,10 +196,10 @@ case $DNAT in
 esac
 
 case $DNAT in
-	1) METHOD='nft dnat'
- 	2) METHOD='nft redirect'
-  	3) METHOD='UPnP dnat'
-   	4) METHOD='UPnP redirect'
+	1) METHOD='nft dnat' ;;
+ 	2) METHOD='nft redirect' ;;
+  	3) METHOD='UPnP dnat' ;;
+   	4) METHOD='UPnP redirect' ;;
 esac
 
 echo -n nftables OK. $METHOD to $APPADDR:$APPPORT$([ -n "$IFNAME" ] && echo @$IFNAME)
