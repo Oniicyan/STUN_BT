@@ -114,7 +114,7 @@ EOF
 	uci set firewall.${OWNNAME}_noft=include
 	uci set firewall.${OWNNAME}_noft.path=/tmp/${OWNNAME}_noft.sh
 	uci commit firewall
-	fw4 -q reload
+	fw4 -q reload >/dev/null
 else
 	nft delete chain ip STUN BTTR_NOFT 2>/dev/null
 	rm /tmp/*_noft.sh 2>/dev/null
@@ -196,7 +196,7 @@ SETDNAT() {
 			RELOAD=1
 		fi
 		uci commit firewall
-		[ "$RELOAD" = 1 ] && fw4 -q reload
+		[ "$RELOAD" = 1 ] && fw4 -q reload >/dev/null
 	fi
 }
 
