@@ -212,4 +212,11 @@ SETDNAT() {
 	nft insert rule ip STUN DNAT $IIFNAME $L4PROTO dport $LANPORT counter redirect to :$APPPORT comment "$OWNNAME"
 )
 
-echo -n nftables OK.
+case $DNAT in
+	1) METHOD='nft dnat'
+ 	2) METHOD='nft redirect'
+  	3) METHOD='UPnP dnat'
+   	4) METHOD='UPnP redirect'
+esac
+
+echo -n nftables OK. $METHOD to $APPADDR:$APPPORT$([ -n "$IFNAME" ] && echo @$IFNAME)
