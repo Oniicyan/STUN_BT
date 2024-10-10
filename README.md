@@ -24,6 +24,8 @@ Lucky 脚本已适配 @th
 
 　
 
-[详细说明](https://www.bilibili.com/read/cv34755793/)
+[NATMap 脚本使用教程](https://www.bilibili.com/read/cv35874617/)
 
 [Lucky 脚本使用教程](https://www.bilibili.com/read/cv35917659/)
+
+[详细说明](https://www.bilibili.com/read/cv34755793/)
