@@ -160,7 +160,7 @@ if [ $DNAT = 0 ]; then
 fi
 
 # 代理失败，则启用本机 UPnP
-[ $DNAT = 0 ] && (upnpc -i -e "STUN BT $L4PROTO $WANPORT->$LANPORT" -a @ $LANPORT $LANPORT $L4PROTO >/dev/null 2>&1 &; DNAT=4)
+[ $DNAT = 0 ] && (upnpc -i -e "STUN BT $L4PROTO $WANPORT->$LANPORT" -a @ $LANPORT $LANPORT $L4PROTO >/dev/null 2>&1; DNAT=4 &)
 
 # 清理不需要的规则
 if [ $DNAT = 3 ]; then
