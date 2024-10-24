@@ -12,7 +12,7 @@ OWNADDR=
 
 OWNNAME=$(echo stun_bt_$APPADDR:$APPPORT$([ -n "$IFNAME" ] && echo @$IFNAME) | sed 's/[[:punct:]]/_/g')
 STUNIFO=/tmp/$OWNNAME.info
-OLDPORT=$LANPORT	# Lucky 使用固定本地端口
+OLDPORT=	# Lucky 使用固定本地端口，无需清理 UPnP 规则
 RELEASE=$(grep ^ID= /etc/os-release | awk -F '=' '{print$2}' | tr -d \")
 
 # 判断 TCP 或 UDP 的穿透是否启用
@@ -105,11 +105,11 @@ fi
 # 判断脚本运行的环境，选择 DNAT 方式
 # 先排除需要 UPnP 的情况
 DNAT=0
-for LANADDR in $(ip -4 a show dev br-lan | grep inet | awk '{print$2}' | awk -F '/' '{print$1}'); do
+for LANADDR in $(ip -4 a | grep inet | awk '{print$2}' | awk -F '/' '{print$1}'); do
 	[ $DNAT = 1 ] && break
 	[ "$LANADDR" = $GWLADDR ] && DNAT=1
 done
-for LANADDR in $(nslookup -type=A $HOSTNAME | grep Address | grep -v :53 | awk '{print$2}'); do
+for LANADDR in $(nslookup -type=A $HOSTNAME | grep Address | grep -v -e ':\d' | awk '{print$2}'); do
 	[ $DNAT = 1 ] && break
 	[ "$LANADDR" = $GWLADDR ] && DNAT=1
 done
@@ -119,7 +119,7 @@ done
 if [ $DNAT = 0 ]; then
 	[ -n "$OLDPORT" ] && upnpc -i -d $OLDPORT $L4PROTO
 	upnpc -i -e "STUN BT $L4PROTO $WANPORT->$LANPORT->$APPPORT" -a $APPADDR $APPPORT $LANPORT $L4PROTO | \
-	grep $APPADDR | grep $APPPORT | grep $LANPORT | grep -v failed
+	grep $APPADDR | grep $APPPORT | grep $LANPORT | grep -v failed >/dev/null
 	[ $? = 0 ] && DNAT=3
 fi
 
@@ -131,12 +131,12 @@ if [ $DNAT = 0 ]; then
 	[ -n "$OLDPORT" ] && proxychains -f $PROXYCONF upnpc -i -d $OLDPORT $L4PROTO
 	proxychains -f $PROXYCONF \
 	upnpc -i -e "STUN BT $L4PROTO $WANPORT->$LANPORT->$APPPORT" -a $APPADDR $APPPORT $LANPORT $L4PROTO | \
-	grep $APPADDR | grep $APPPORT | grep $LANPORT | grep -v failed
+	grep $APPADDR | grep $APPPORT | grep $LANPORT | grep -v failed >/dev/null
 	[ $? = 0 ] && DNAT=3
 fi
 
 # 代理失败，则启用本机 UPnP
-[ $DNAT = 0 ] && (upnpc -i -e "STUN BT $L4PROTO $WANPORT->$LANPORT" -a @ $LANPORT $LANPORT $L4PROTO; DNAT=4)
+[ $DNAT = 0 ] && (upnpc -i -e "STUN BT $L4PROTO $WANPORT->$LANPORT" -a @ $LANPORT $LANPORT $L4PROTO >/dev/null 2>&1 &; DNAT=4)
 
 # 清理不需要的规则
 if [ $DNAT = 3 ]; then
@@ -157,12 +157,10 @@ SETDNAT() {
 	if [ "$RELEASE" = "openwrt" ]; then
 		uci -q delete firewall.stun_foo
 		if uci show firewall | grep =redirect >/dev/null; then
-			i=0
 			for CONFIG in $(uci show firewall | grep =redirect | awk -F = '{print$1}'); do
-				[ "$(uci -q get $CONFIG.enabled)" = 0 ] && let i++ && break
-				[ "$(uci -q get $CONFIG.src)" != "wan" ] && let i++
+				[ "$(uci -q get $CONFIG.src)" = "wan" ] && [ "$(uci -q get $CONFIG.enabled)" != 0 ] && \
+				RULE=1 && break
 			done
-			[ $(uci show firewall | grep =redirect | wc -l) -gt $i ] && RULE=1
 		fi
 		if [ "$RULE" != 1 ]; then
 			uci set firewall.stun_foo=redirect
