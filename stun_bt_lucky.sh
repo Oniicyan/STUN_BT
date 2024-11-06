@@ -1,6 +1,6 @@
 # 从 Lucky 自定义命令中传递参数
 IFNAME=$9	# 指定接口，可留空；仅在多 WAN 时需要；拨号接口的格式为 "pppoe-wancm"
-APPADDR=$7	# 下载设备的 IPv4 地址，允许主路由或旁路由本身运行 BT 应用
+APPADDR=$7	# BT 应用程序的 IPv4 地址；BT 应用运行在路由器上时，请正确区分所用的地址
 APPPORT=$8	# BT 应用程序的监听端口，HTTP 改包要求 5 位数端口
 
 WANADDR=$1
