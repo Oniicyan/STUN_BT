@@ -1,13 +1,13 @@
 # 从 Lucky 自定义命令中传递参数
-IFNAME=$9	# 指定接口，默认留空；仅在多 WAN 时需要；拨号接口的格式为 "pppoe-wancm"
-APPADDR=$7	# BT 应用程序的 IPv4 地址；BT 应用运行在路由器上时，请正确区分所用的地址
-APPPORT=$8	# BT 应用程序的监听端口，HTTP 改包要求 5 位数端口
+IFNAME=$6	# 指定接口，默认留空；仅在多 WAN 时需要；拨号接口的格式为 "pppoe-wancm"
+APPADDR=$4	# BT 应用程序的 IPv4 地址；BT 应用运行在路由器上时，请正确区分所用的地址
+APPPORT=$5	# BT 应用程序的监听端口，HTTP 改包要求 5 位数端口
 
 WANADDR=$1
 WANPORT=$2
-LANPORT=$3
-L4PROTO=$4
-OWNADDR=
+LANPORT=    # Lucky 不传递穿透通道本地端口，留空
+L4PROTO=$3  # Lucky 不传递传输层协议，手动输入并传递
+OWNADDR=    # Lucky 不传递穿透通道本地地址，留空
 
 OWNNAME=$(echo stun_bt_$APPADDR:$APPPORT$([ -n "$IFNAME" ] && echo @$IFNAME) | sed 's/[[:punct:]]/_/g')
 RELEASE=$(grep ^ID= /etc/os-release | awk -F '=' '{print$2}' | tr -d \")
@@ -27,8 +27,8 @@ fi
 
 # 更新保存穿透信息
 sed -i '/'$L4PROTO'/d' $STUNIFO 2>/dev/null
-echo $L4PROTO $WANADDR:$WANPORT '->' $OWNADDR:$LANPORT '->' $APPADDR:$APPPORT $(date +%s) >>$STUNIFO
-echo $(date) $L4PROTO $WANADDR:$WANPORT '->' $OWNADDR:$LANPORT '->' $APPADDR:$APPPORT >>/tmp/$OWNNAME.log
+echo $L4PROTO $WANADDR:$WANPORT '->' $([ -n "$LANPORT" ] && echo $OWNADDR:$LANPORT '->') $APPADDR:$APPPORT $(date +%s) >>$STUNIFO
+echo $(date) $L4PROTO $WANADDR:$WANPORT '->' $([ -n "$LANPORT" ] && echo $OWNADDR:$LANPORT '->') $APPADDR:$APPPORT >>/tmp/$OWNNAME.log
 
 # 防止脚本同时操作 nftables 导致冲突
 [ $L4PROTO = udp ] && sleep 1 && \
