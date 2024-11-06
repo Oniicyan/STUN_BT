@@ -44,8 +44,8 @@ fi
 
 # 更新保存穿透信息
 sed -i '/'$L4PROTO'/d' $STUNIFO 2>/dev/null
-echo $L4PROTO $WANADDR:$WANPORT '->' $OWNADDR:$LANPORT '->' $APPADDR:$APPPORT $(date +%s) >>$STUNIFO
-echo $(date) $L4PROTO $WANADDR:$WANPORT '->' $OWNADDR:$LANPORT '->' $APPADDR:$APPPORT >>/tmp/$OWNNAME.log
+echo $L4PROTO $WANADDR:$WANPORT '->' $([ -n "$LANPORT" ] && echo $OWNADDR:$LANPORT '->') $APPADDR:$APPPORT $(date +%s) >>$STUNIFO
+echo $(date) $L4PROTO $WANADDR:$WANPORT '->' $([ -n "$LANPORT" ] && echo $OWNADDR:$LANPORT '->') $APPADDR:$APPPORT >>/tmp/$OWNNAME.log
 
 # 防止脚本同时操作 nftables 导致冲突
 [ $L4PROTO = udp ] && sleep 1 && \
