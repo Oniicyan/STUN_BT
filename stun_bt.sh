@@ -1,8 +1,7 @@
 # 以下变量需按要求填写
-IFNAME=			# 指定接口，可留空；仅在多 WAN 时需要；拨号接口的格式为 "pppoe-wancm"
-GWLADDR=192.168.8.1	# 主路由 LAN 的 IPv4 地址
-APPADDR=192.168.8.168	# 下载设备的 IPv4 地址，允许主路由或旁路由本身运行 BT 应用
-APPPORT=12345		# BT 应用程序的监听端口，HTTP 改包要求 5 位数端口
+IFNAME=                # 指定接口，可留空；仅在多 WAN 时需要；拨号接口的格式为 "pppoe-wancm"
+APPADDR=192.168.1.168  # 下载设备的 IPv4 地址，允许主路由或旁路由本身运行 BT 应用
+APPPORT=12345          # BT 应用程序的监听端口，HTTP 改包要求 5 位数端口
 
 WANADDR=$1
 WANPORT=$2
@@ -10,10 +9,9 @@ LANPORT=$4
 L4PROTO=$5
 OWNADDR=$6
 
-OWNNAME=$(echo $0 | awk -F / '{print$NF}' | awk -F . '{print$1}' | sed 's/[[:punct:]]/_/g')
+OWNNAME=$(echo stun_bt_$APPADDR:$APPPORT$([ -n "$IFNAME" ] && echo @$IFNAME) | sed 's/[[:punct:]]/_/g')
 RELEASE=$(grep ^ID= /etc/os-release | awk -F '=' '{print$2}' | tr -d \")
 STUNIFO=/tmp/$OWNNAME.info
-OLDPORT=$(grep $L4PROTO $STUNIFO 2>/dev/null | awk -F ':| ' '{print$6}')
 
 # 判断 TCP 或 UDP 的穿透是否启用
 # 清理穿透信息中没有运行的协议
@@ -28,18 +26,21 @@ case $RELEASE in
 				esac
 			fi
 		done
-		[ $(uci -q get natmap.$SECTTCP) ] || ( \
-		DISPORT="$(grep tcp $STUNIFO | awk -F ':| ' '{print$6}') tcp"; sed -i '/'tcp'/d' $STUNIFO )
-		[ $(uci -q get natmap.$SECTUDP) ] || ( \
-		DISPORT="$(grep udp $STUNIFO | awk -F ':| ' '{print$6}') udp"; sed -i '/'udp'/d' $STUNIFO )
+		[ $(uci -q get natmap.$SECTTCP) ] || sed -i '/'tcp'/d' $STUNIFO
+		[ $(uci -q get natmap.$SECTUDP) ] || sed -i '/'udp'/d' $STUNIFO
 		;;
 	*)
-		ps aux | grep $0 | grep "\-h" || ( \
-		DISPORT="$(grep tcp $STUNIFO | awk -F ':| ' '{print$6}') tcp"; sed -i '/'tcp'/d' $STUNIFO )
-		ps aux | grep $0 | grep "\-u" || ( \
-		DISPORT="$(grep udp $STUNIFO | awk -F ':| ' '{print$6}') udp"; sed -i '/'udp'/d' $STUNIFO )
+		ps aux | grep $0 | grep "\-h" || sed -i '/'tcp'/d' $STUNIFO
+		ps aux | grep $0 | grep "\-u" || sed -i '/'udp'/d' $STUNIFO
 		;;
 esac
+
+# 若公网端口未发生变化，则退出脚本
+OLDPORT=$(grep $L4PROTO $STUNIFO | awk -F ':| ' '{print$3}')
+if [ $WANPORT = "$OLDPORT" ]; then
+	logger -st stun_bt The external port $WANPORT/$L4PROTO$([ -n "$IFNAME" ] && echo @$IFNAME) has not changed.
+	exit 0
+fi
 
 # 更新保存穿透信息
 sed -i '/'$L4PROTO'/d' $STUNIFO 2>/dev/null
@@ -99,8 +100,9 @@ nft delete rule ip STUN BTTR_UDP handle $(nft -a list chain ip STUN BTTR_UDP 2>/
 nft insert rule ip STUN BTTR_UDP $OIFNAME ip saddr $APPADDR @ih,64,32 1 @ih,768,16 $APPPORT @ih,768,16 set $SETNUM update @BTTR_UDP { ip daddr . udp dport } counter accept comment "$OWNNAME"
 
 # Tracker 流量需绕过软件加速
+# 仅检测 OpenWrt fw4 的软件加速，其他加速请自行解决
 if uci show firewall 2>&1 | grep "flow_offloading='1'" >/dev/null; then
-	CTMARK=$RANDOM
+	CTMARK=$RANDOM$RANDOM
 	nft add chain ip STUN BTTR_NOFT { type filter hook forward priority filter - 5 \; }
 	nft delete rule ip STUN BTTR_NOFT handle $(nft -a list chain ip STUN BTTR_NOFT 2>/dev/null | grep \"$OWNNAME\" | grep '@BTTR_HTTP' | awk '{print$NF}') 2>/dev/null
 	nft delete rule ip STUN BTTR_NOFT handle $(nft -a list chain ip STUN BTTR_NOFT 2>/dev/null | grep \"$OWNNAME\" | grep '@BTTR_UDP' | awk '{print$NF}') 2>/dev/null
@@ -124,97 +126,4 @@ else
 	done
 fi
 
-# 判断脚本运行的环境，选择 DNAT 方式
-# 先排除需要 UPnP 的情况
-DNAT=0
-for LANADDR in $(ip -4 a | grep inet | awk '{print$2}' | awk -F '/' '{print$1}'); do
-	[ $DNAT = 1 ] && break
-	[ "$LANADDR" = $GWLADDR ] && DNAT=1
-done
-for LANADDR in $(nslookup -type=A $HOSTNAME | grep Address | grep -v -e ':\d' | awk '{print$2}'); do
-	[ $DNAT = 1 ] && break
-	[ "$LANADDR" = $GWLADDR ] && DNAT=1
-done
-[ $APPADDR = $GWLADDR ] && DNAT=2
-
-# 若未排除，则尝试直连 UPnP
-if [ $DNAT = 0 ]; then
-	[ -n "$OLDPORT" ] && upnpc -i -d $OLDPORT $L4PROTO
-	[ -n "$DISPORT" ] && upnpc -i -d $DISPORT
-	upnpc -i -e "STUN BT $L4PROTO $WANPORT->$LANPORT->$APPPORT" -a $APPADDR $APPPORT $LANPORT $L4PROTO | \
-	grep $APPADDR | grep $APPPORT | grep $LANPORT | grep -v failed >/dev/null
-	[ $? = 0 ] && DNAT=3
-fi
-
-# 直连失败，则尝试代理 UPnP
-if [ $DNAT = 0 ]; then
-	PROXYCONF=/tmp/proxychains.conf
-	echo [ProxyList] >$PROXYCONF
-	echo http $APPADDR 3128 >>$PROXYCONF
-	[ -n "$OLDPORT" ] && proxychains -f $PROXYCONF upnpc -i -d $OLDPORT $L4PROTO
-	[ -n "$DISPORT" ] && proxychains -f $PROXYCONF upnpc -i -d $DISPORT
-	proxychains -f $PROXYCONF \
-	upnpc -i -e "STUN BT $L4PROTO $WANPORT->$LANPORT->$APPPORT" -a $APPADDR $APPPORT $LANPORT $L4PROTO | \
-	grep $APPADDR | grep $APPPORT | grep $LANPORT | grep -v failed >/dev/null
-	[ $? = 0 ] && DNAT=3
-fi
-
-# 代理失败，则启用本机 UPnP
-[ $DNAT = 0 ] && (upnpc -i -e "STUN BT $L4PROTO $WANPORT->$LANPORT" -a @ $LANPORT $LANPORT $L4PROTO >/dev/null 2>&1; DNAT=4)
-
-# 清理不需要的规则
-if [ $DNAT = 3 ]; then
-	nft delete rule ip STUN DNAT handle $(nft -a list chain ip STUN DNAT 2>/dev/null | grep \"$OWNNAME\" | grep tcp | awk '{print$NF}') 2>/dev/null
-	nft delete rule ip STUN DNAT handle $(nft -a list chain ip STUN DNAT 2>/dev/null | grep \"$OWNNAME\" | grep udp | awk '{print$NF}') 2>/dev/null
-fi
-if [ $DNAT != 3 ]; then
-	[ -z "$WANTCP" ] && \
-	nft delete rule ip STUN DNAT handle $(nft -a list chain ip STUN DNAT 2>/dev/null | grep \"$OWNNAME\" | grep tcp | awk '{print$NF}') 2>/dev/null
-	[ -z "$WANUDP" ] && \
-	nft delete rule ip STUN DNAT handle $(nft -a list chain ip STUN DNAT 2>/dev/null | grep \"$OWNNAME\" | grep udp | awk '{print$NF}') 2>/dev/null
-fi
-
-# 初始化 DNAT
-SETDNAT() {
-	nft add chain ip STUN DNAT { type nat hook prerouting priority dstnat \; }
-	nft delete rule ip STUN DNAT handle $(nft -a list chain ip STUN DNAT 2>/dev/null | grep \"$OWNNAME\" | grep $L4PROTO | awk '{print$NF}') 2>/dev/null
-	if [ "$RELEASE" = "openwrt" ]; then
-		uci -q delete firewall.stun_foo
-		if uci show firewall | grep =redirect >/dev/null; then
-			for CONFIG in $(uci show firewall | grep =redirect | awk -F = '{print$1}'); do
-				[ "$(uci -q get $CONFIG.src)" = "wan" ] && [ "$(uci -q get $CONFIG.enabled)" != 0 ] && \
-				RULE=1 && break
-			done
-		fi
-		if [ "$RULE" != 1 ]; then
-			uci set firewall.stun_foo=redirect
-			uci set firewall.stun_foo.name=stun_foo
-			uci set firewall.stun_foo.src=wan
-			uci set firewall.stun_foo.mark=$RANDOM
-			RELOAD=1
-		fi
-		uci commit firewall
-		[ "$RELOAD" = 1 ] && fw4 -q reload >/dev/null
-	fi
-}
-
-# BT 应用运行在路由器下，使用 dnat
-[ $DNAT = 1 ] || [ $DNAT = 4 ] && ( \
-	SETDNAT
-	nft insert rule ip STUN DNAT $IIFNAME $L4PROTO dport $LANPORT counter dnat ip to $APPADDR:$APPPORT comment "$OWNNAME"
-)
-
-# BT 应用运行在路由器上，使用 redirect
-[ $DNAT = 2 ] && ( \
-	SETDNAT
-	nft insert rule ip STUN DNAT $IIFNAME $L4PROTO dport $LANPORT counter redirect to :$APPPORT comment "$OWNNAME"
-)
-
-case $DNAT in
-	1) METHOD='nft dnat' ;;
- 	2) METHOD='nft redirect' ;;
-  	3) METHOD='UPnP dnat' ;;
-   	4) METHOD='UPnP redirect' ;;
-esac
-
-echo -n nftables OK. $METHOD to $APPADDR:$APPPORT$([ -n "$IFNAME" ] && echo @$IFNAME)
+logger -st stun_bt $WANADDR:$WANPORT/$L4PROTO$([ -n "$IFNAME" ] && echo @$IFNAME) to $APPADDR:$APPPORT
