@@ -224,7 +224,7 @@ UDP
 IFNAME=                # 指定接口，默认留空；仅在多 WAN 时需要；拨号接口的格式为 "pppoe-wancm"
 APPADDR=192.168.1.168  # BT 应用程序的 IPv4 地址；BT 应用运行在路由器上时，请正确区分所用的地址
 APPPORT=61128          # BT 应用程序的监听端口，HTTP 改包要求 5 位数端口
-L4PROTO=tcp            # 与 Lucky 的穿透类型一致；小写字母 tcp 或 udp
+L4PROTO=tcp            # 小写字母 tcp 或 udp，对应上面的穿透类型
 
 [ -e /usr/stun_bt_lucky.sh ] || curl -Lso /usr/stun_bt_lucky.sh https://gitee.com/oniicyan/stun_bt/raw/master/stun_bt_lucky.sh
 sh /usr/stun_bt_lucky.sh ${ip} ${port} $L4PROT $APPADDR $APPPORT $IFNAME
