@@ -39,7 +39,7 @@ esac
 OLDPORT=$(grep $L4PROTO $STUNIFO | awk -F ':| ' '{print$3}')
 if [ $WANPORT = "$OLDPORT" ]; then
 	logger -st stun_bt The external port $WANPORT/$L4PROTO$([ -n "$IFNAME" ] && echo @$IFNAME) has not changed.
-	exit 0
+	nft list table ip STUN 2>&1 | grep $(printf '0x%x' $WANPORT) >/dev/null && exit 0
 fi
 
 # 更新保存穿透信息
