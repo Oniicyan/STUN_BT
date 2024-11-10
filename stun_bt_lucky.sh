@@ -85,7 +85,7 @@ nft insert rule ip STUN BTTR_UDP $OIFNAME ip saddr $APPADDR @th,128,32 1 @th,832
 # Tracker 流量需绕过软件加速
 # 仅检测 OpenWrt fw4 的软件加速，其他加速请自行解决
 if uci show firewall 2>&1 | grep "flow_offloading='1'" >/dev/null; then
-	CTMARK=$(echo $APPADDR | awk -F . '{print$NF}')$APPPORT
+	CTMARK=0x$(echo $APPADDR | awk -F . '{print$NF}')$APPPORT
 	nft add chain ip STUN BTTR_NOFT { type filter hook forward priority filter - 5 \; }
 	nft delete rule ip STUN BTTR_NOFT handle $(nft -a list chain ip STUN BTTR_NOFT 2>/dev/null | grep \"$OWNNAME\" | grep '@BTTR_HTTP' | awk '{print$NF}') 2>/dev/null
 	nft delete rule ip STUN BTTR_NOFT handle $(nft -a list chain ip STUN BTTR_NOFT 2>/dev/null | grep \"$OWNNAME\" | grep '@BTTR_UDP' | awk '{print$NF}') 2>/dev/null
