@@ -1,6 +1,6 @@
 # 介绍
 
-Linux（特别是 OpenWrt，包括 WSL2）下通过 [NATMap](https://github.com/heiher/natmap) 进行内网穿透后，调用通知脚本对 BT 软件向 HTTP / UDP Tracker 汇报的端口进行修改
+Linux（特别是 OpenWrt，包括 WSL2）下通过 [NATMap](https://github.com/heiher/natmap) 或 [Lucky](https://lucky666.cn/) 进行内网穿透后，调用通知脚本对 BT 软件向 HTTP / UDP Tracker 汇报的端口进行修改
 
 基于 BT 协议，利用 nftables 对数据包进行修改，不需要下载设备与 BT 软件的支持
 
