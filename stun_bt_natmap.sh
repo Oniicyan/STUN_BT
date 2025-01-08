@@ -101,22 +101,27 @@ nft insert rule ip STUN BTTR_UDP $OIFNAME ip saddr $APPADDR @ih,64,32 1 @ih,768,
 
 # Tracker 流量需绕过软件加速
 # 仅检测 OpenWrt fw4 的软件加速，其他加速请自行解决
+CTMARK=0x$(echo $APPADDR | awk -F . '{print$NF}')$APPPORT
+CTNOFT=stun_bt_${CTMARK}_noft
 if uci show firewall 2>&1 | grep "flow_offloading='1'" >/dev/null; then
-	CTMARK=0x$(echo $APPADDR | awk -F . '{print$NF}')$APPPORT
-	nft add chain ip STUN BTTR_NOFT { type filter hook forward priority filter - 5 \; }
-	nft delete rule ip STUN BTTR_NOFT handle $(nft -a list chain ip STUN BTTR_NOFT 2>/dev/null | grep \"$OWNNAME\" | grep '@BTTR_HTTP' | awk '{print$NF}') 2>/dev/null
-	nft delete rule ip STUN BTTR_NOFT handle $(nft -a list chain ip STUN BTTR_NOFT 2>/dev/null | grep \"$OWNNAME\" | grep '@BTTR_UDP' | awk '{print$NF}') 2>/dev/null
-	nft add rule ip STUN BTTR_NOFT $OIFNAME ip saddr $APPADDR ip daddr . tcp dport @BTTR_HTTP counter ct mark set $CTMARK comment "$OWNNAME"
-	nft add rule ip STUN BTTR_NOFT $OIFNAME ip saddr $APPADDR ip daddr . udp dport @BTTR_UDP counter ct mark set $CTMARK comment "$OWNNAME"
-cat >/tmp/${OWNNAME}_noft.sh <<EOF
-uci show firewall 2>&1 | grep "flow_offloading='1'" >/dev/null || exit
-nft insert rule inet fw4 forward $OIFNAME ip saddr $APPADDR tcp flags { syn, ack } accept comment "$OWNNAME"
-nft insert rule inet fw4 forward ct mark $CTMARK counter accept comment "$OWNNAME"
+	if ! nft list chain ip STUN BTTR_NOFT 2>&1 | grep $CTNOFT >/dev/null; then
+		nft add chain ip STUN BTTR_NOFT { type filter hook forward priority filter - 5 \; }
+		nft delete rule ip STUN BTTR_NOFT handle $(nft -a list chain ip STUN BTTR_NOFT 2>/dev/null | grep \"$CTNOFT\" | grep '@BTTR_HTTP' | awk '{print$NF}') 2>/dev/null
+		nft delete rule ip STUN BTTR_NOFT handle $(nft -a list chain ip STUN BTTR_NOFT 2>/dev/null | grep \"$CTNOFT\" | grep '@BTTR_UDP' | awk '{print$NF}') 2>/dev/null
+		nft add rule ip STUN BTTR_NOFT $OIFNAME ip saddr $APPADDR ip daddr . tcp dport @BTTR_HTTP counter ct mark set $CTMARK comment "$CTNOFT"
+		nft add rule ip STUN BTTR_NOFT $OIFNAME ip saddr $APPADDR ip daddr . udp dport @BTTR_UDP counter ct mark set $CTMARK comment "$CTNOFT"
+	fi
+	if ! nft list chain inet fw4 forward | grep $CTNOFT >/dev/null; then
+		cat >/tmp/$CTNOFT.sh <<EOF
+nft list chain inet fw4 forward | grep $CTMARK >/dev/null && exit
+nft insert rule inet fw4 forward $OIFNAME ip saddr $APPADDR tcp flags { syn, ack } accept comment "$CTNOFT"
+nft insert rule inet fw4 forward ct mark $CTMARK counter accept comment "$CTNOFT"
 EOF
-	uci set firewall.${OWNNAME}_noft=include
-	uci set firewall.${OWNNAME}_noft.path=/tmp/${OWNNAME}_noft.sh
-	uci commit firewall
-	fw4 -q reload >/dev/null
+		uci set firewall.$CTNOFT=include
+		uci set firewall.$CTNOFT.path=/tmp/$CTNOFT.sh
+		uci commit firewall
+		fw4 -q reload >/dev/null
+	fi
 else
 	nft delete chain ip STUN BTTR_NOFT 2>/dev/null
 	rm /tmp/*_noft.sh 2>/dev/null
