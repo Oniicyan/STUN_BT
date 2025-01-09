@@ -88,8 +88,10 @@ CTMARK=0x$(echo $APPADDR | awk -F . '{print$NF}')$APPPORT
 if uci show firewall 2>&1 | grep "flow_offloading='1'" >/dev/null; then
 	if ! nft list chain ip STUN BTTR_NOFT 2>&1 | grep $OWNNAME >/dev/null; then
 		nft add chain ip STUN BTTR_NOFT { type filter hook forward priority filter - 5 \; }
-		nft delete rule ip STUN BTTR_NOFT handle $(nft -a list chain ip STUN BTTR_NOFT 2>/dev/null | grep \"$OWNNAME\" | grep '@BTTR_HTTP' | awk '{print$NF}') 2>/dev/null
-		nft delete rule ip STUN BTTR_NOFT handle $(nft -a list chain ip STUN BTTR_NOFT 2>/dev/null | grep \"$OWNNAME\" | grep '@BTTR_UDP' | awk '{print$NF}') 2>/dev/null
+		for HANDLE in $(nft -a list chain ip STUN BTTR_NOFT 2>/dev/null | grep \"$OWNNAME\" | awk '{print$NF}'); do
+			nft delete rule ip STUN BTTR_NOFT handle $HANDLE
+		done
+		nft add rule ip STUN BTTR_NOFT $OIFNAME ct mark $CTMARK accept
 		nft add rule ip STUN BTTR_NOFT $OIFNAME ip saddr $APPADDR ip daddr . tcp dport @BTTR_HTTP counter ct mark set $CTMARK comment "$OWNNAME"
 		nft add rule ip STUN BTTR_NOFT $OIFNAME ip saddr $APPADDR ip daddr . udp dport @BTTR_UDP counter ct mark set $CTMARK comment "$OWNNAME"
 	fi
