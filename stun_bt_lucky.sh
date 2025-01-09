@@ -56,12 +56,12 @@ fi
 nft add set ip STUN BTTR_HTTP "{ type ipv4_addr . inet_service; flags dynamic; timeout 1h; }"
 nft add chain ip STUN BTTR_HTTP
 nft insert rule ip STUN BTTR ip daddr . tcp dport @BTTR_HTTP goto BTTR_HTTP
-nft add rule ip STUN BTTR meta l4proto tcp @ih,0,112 0x474554202f616e6e6f756e63653f add @BTTR_HTTP { ip daddr . tcp dport } goto BTTR_HTTP
+nft add rule ip STUN BTTR meta l4proto tcp @th,160,112 0x474554202f616e6e6f756e63653f add @BTTR_HTTP { ip daddr . tcp dport } goto BTTR_HTTP
 for HANDLE in $(nft -a list chain ip STUN BTTR_HTTP | grep \"$OWNNAME\" | awk '{print$NF}'); do
 	nft delete rule ip STUN BTTR_HTTP handle $HANDLE
 done
-for OFFSET in $(seq 768 16 1056); do
-	nft insert rule ip STUN BTTR_HTTP $OIFNAME ip saddr $APPADDR @ih,$OFFSET,80 $STRAPP @ih,$(($OFFSET+32)),48 set $SETSTR update @BTTR_HTTP { ip daddr . tcp dport } counter accept comment "$OWNNAME"
+for OFFSET in $(seq 928 16 1216); do
+	nft insert rule ip STUN BTTR_HTTP $OIFNAME ip saddr $APPADDR @th,$OFFSET,80 $STRAPP @th,$(($OFFSET+32)),48 set $SETSTR update @BTTR_HTTP { ip daddr . tcp dport } counter accept comment "$OWNNAME"
 done
 
 # UDP Tracker
@@ -75,9 +75,9 @@ fi
 nft add set ip STUN BTTR_UDP "{ type ipv4_addr . inet_service; flags dynamic; timeout 1h; }"
 nft add chain ip STUN BTTR_UDP
 nft insert rule ip STUN BTTR ip daddr . udp dport @BTTR_UDP goto BTTR_UDP
-nft add rule ip STUN BTTR meta l4proto udp @ih,0,64 0x41727101980 @ih,64,32 0 add @BTTR_UDP { ip daddr . udp dport } goto BTTR_UDP
+nft add rule ip STUN BTTR meta l4proto udp @th,64,64 0x41727101980 @th,128,32 0 add @BTTR_UDP { ip daddr . udp dport } goto BTTR_UDP
 nft delete rule ip STUN BTTR_UDP handle $(nft -a list chain ip STUN BTTR_UDP 2>/dev/null | grep \"$OWNNAME\" | awk '{print$NF}') 2>/dev/null
-nft insert rule ip STUN BTTR_UDP $OIFNAME ip saddr $APPADDR @ih,64,32 1 @ih,768,16 $APPPORT @ih,768,16 set $SETNUM update @BTTR_UDP { ip daddr . udp dport } counter accept comment "$OWNNAME"
+nft insert rule ip STUN BTTR_UDP $OIFNAME ip saddr $APPADDR @th,128,32 1 @th,832,16 $APPPORT @th,832,16 set $SETNUM update @BTTR_UDP { ip daddr . udp dport } counter accept comment "$OWNNAME"
 
 # Tracker 流量需绕过软件加速
 # 仅检测 OpenWrt firewall4 的软件加速，其他加速请自行解决
