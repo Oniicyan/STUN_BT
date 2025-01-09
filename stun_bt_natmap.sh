@@ -110,14 +110,13 @@ if uci show firewall 2>&1 | grep "flow_offloading='1'" >/dev/null; then
 		nft add rule ip STUN BTTR_NOFT $OIFNAME ip saddr $APPADDR ip daddr . tcp dport @BTTR_HTTP counter ct mark set $CTMARK comment "$OWNNAME"
 		nft add rule ip STUN BTTR_NOFT $OIFNAME ip saddr $APPADDR ip daddr . udp dport @BTTR_UDP counter ct mark set $CTMARK comment "$OWNNAME"
 	fi
-	if ! nft list chain inet fw4 forward | grep $OWNNAME >/dev/null; then
-		cat >/tmp/$OWNNAME.sh <<EOF
-nft list chain inet fw4 forward | grep $OWNNAME >/dev/null && exit
-nft insert rule inet fw4 forward $OIFNAME ip saddr $APPADDR tcp flags { syn, ack } accept comment "$OWNNAME"
-nft insert rule inet fw4 forward $OIFNAME ct mark $CTMARK counter accept comment "$OWNNAME"
+	if ! nft list chain inet fw4 forward | grep ${OWNNAME}_noft >/dev/null; then
+		cat >/tmp/${OWNNAME}_noft.sh <<EOF
+nft insert rule inet fw4 forward $OIFNAME ip saddr $APPADDR tcp flags { syn, ack } accept comment "${OWNNAME}_noft"
+nft insert rule inet fw4 forward $OIFNAME ct mark $CTMARK counter accept comment "${OWNNAME}_noft"
 EOF
-		uci set firewall.$OWNNAME=include
-		uci set firewall.$OWNNAME.path=/tmp/$OWNNAME.sh
+		uci set firewall.${OWNNAME}_noft=include
+		uci set firewall.${OWNNAME}_noft.path=/tmp/${OWNNAME}_noft.sh
 		uci commit firewall
 		fw4 -q reload >/dev/null
 	fi
@@ -128,6 +127,7 @@ else
 		uci -q delete $SECTION
 		uci commit firewall
 	done
+	nft list chain inet fw4 forward | grep _noft >/dev/null && fw4 -q reload >/dev/null
 fi
 
 logger -st stun_bt $WANADDR:$WANPORT/$L4PROTO$([ -n "$IFNAME" ] && echo @$IFNAME) to $APPADDR:$APPPORT
